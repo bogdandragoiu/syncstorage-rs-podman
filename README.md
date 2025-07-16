@@ -9,7 +9,7 @@ This was created on rootless podman, but I personally use it rootful under Alpin
 1. Clone this repository
 1. Copy the example files to the files that you will use
    ```
-   cp config.yaml.example config.yaml
+   cp secret.yaml.example secret.yaml
    cp firefox-sync.yaml.example firefox-sync.yaml
    ```
 1. In `firefox-sync.yaml` fill out
