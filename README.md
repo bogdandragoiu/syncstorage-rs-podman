@@ -52,8 +52,6 @@ This was created on rootless podman, but I personally use it rootful under Alpin
    <br>⚠️ You only need to do this **once**.
    1. On each browser you want to sync go to `about:config`
    1. Edit `identity.sync.tokenserver.uri` and set it to **SYNC_URL**
-   1. (Optional) Set also `services.sync.log.appender.file.logOnSuccess` to **true** in case you want to debug issues or see  if the sync is working under **about:sync-log**
-   <br>
-   ℹ️ Failures result in error-sync-\*.log files while success-sync-\* indicate working sync.
+   1. (Optional) Set also `services.sync.log.appender.file.logOnSuccess` to **true** in case you want to debug issues or see  if the sync is working under **about:sync-log**<br>ℹ️ Failures result in error-sync-*.log files while success-sync-* indicate working sync.
    1. Sign into firefox and sync, look for latest docs from Mozilla: https://support.mozilla.org/en-US/kb/how-do-i-set-sync-my-computer
 
