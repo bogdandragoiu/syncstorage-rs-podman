@@ -1,0 +1,126 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: firefox-sync-env
+data:
+  SYNC_URL: http://<your_domain>:8000
+  MYSQL_USER: sync
+  MYSQL_HOSTNAME: firefox-sync-mariadb
+  MYSQL_PORT: 3306
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mariadb-init-sql
+data:
+  init.sql: |
+    CREATE DATABASE IF NOT EXISTS syncstorage_rs;
+    CREATE DATABASE IF NOT EXISTS tokenserver_rs;
+
+    GRANT ALL PRIVILEGES
+      ON syncstorage_rs.*
+      TO sync;
+
+    GRANT ALL PRIVILEGES
+      ON tokenserver_rs.*
+      TO sync;
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: firefox-sync
+  namespace: firefox-sync
+  labels:
+    app: firefox-sync
+spec:
+  containers:
+    - name: mariadb
+      image: linuxserver/mariadb:10.6.13
+      volumeMounts:
+        - name: mariadb-config
+          mountPath: /config
+        - name: mariadb-init-sql # New volume mount for the init script
+          mountPath: /config/initdb.d/init.sql # Specific file path
+          subPath: init.sql
+      env:
+        - name: PUID
+          value: 0
+        - name: PGID
+          value: 0
+        - name: MYSQL_HOSTNAME
+          valueFrom:
+            configMapKeyRef:
+              name: firefox-sync-env
+              key: MYSQL_HOSTNAME
+        - name: MYSQL_USER
+          valueFrom:
+            configMapKeyRef:
+              name: firefox-sync-env
+              key: MYSQL_USER
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: firefox-sync-secret
+              key: MYSQL_ROOT_PASSWORD
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: firefox-sync-secret
+              key: MYSQL_PASSWORD
+
+    - name: server
+      image: syncstorage-rs # build image, pass '--build' to 'kube play' to rebuild
+      ports:
+        - hostPort: 8000
+          containerPort: 8000
+      env:
+        - name: SYNC_URL
+          valueFrom:
+            configMapKeyRef:
+              name: firefox-sync-env
+              key: SYNC_URL
+        - name: LOGLEVEL
+          value: info
+        - name: SYNC_CAPACITY
+          value: 10 # Max number of users that will be accepted
+      
+        - name: MYSQL_HOSTNAME
+          # value: <pod_name>-<container-name>
+          value: firefox-sync-mariadb
+        - name: MYSQL_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: firefox-sync-env
+              key: MYSQL_PORT
+        - name: MYSQL_USER
+          valueFrom:
+            configMapKeyRef:
+              name: firefox-sync-env
+              key: MYSQL_USER
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: firefox-sync-secret
+              key: MYSQL_PASSWORD
+        - name: SYNC_MASTER_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: firefox-sync-secret
+              key: SYNC_MASTER_SECRET
+        
+        - name: METRICS_HASH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: firefox-sync-secret
+              key: METRICS_HASH_SECRET
+        
+  volumes:
+    - name: mariadb-config
+      hostPath:
+        path: config # Local path
+        # path: /var/data/firefox-sync-mariadb-config # Altenrative using absolute path
+        type: DirectoryOrCreate
+    - name: mariadb-init-sql
+      configMap:
+        name: mariadb-init-sql
